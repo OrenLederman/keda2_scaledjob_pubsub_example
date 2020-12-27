@@ -1,13 +1,16 @@
-# Code based on - https://github.com/googleapis/python-pubsub/blob/master/samples/snippets/subscriber.py
+import json
 import os
 
 from google.cloud import pubsub_v1
+from google.oauth2 import service_account
 
 
 def synchronous_pull(project_id, subscription_name, credentials_json):
     """Pulling messages synchronously."""
+    info = json.loads(credentials_json)
+    credentials = service_account.Credentials.from_service_account_info(info)
 
-    subscriber = pubsub_v1.SubscriberClient()
+    subscriber = pubsub_v1.SubscriberClient(credentials=credentials)
     subscription_path = subscriber.subscription_path(project_id, subscription_name)
 
     NUM_MESSAGES = 1
@@ -15,6 +18,7 @@ def synchronous_pull(project_id, subscription_name, credentials_json):
 
     # The subscriber pulls a specific number of messages. The actual
     # number of messages pulled may be smaller than max_messages.
+    print(f"Waiting for a message for {TIMEOUT_SEC} seconds")
     response = subscriber.pull(
         subscription=subscription_path,
         max_messages=NUM_MESSAGES,
@@ -25,6 +29,9 @@ def synchronous_pull(project_id, subscription_name, credentials_json):
     for received_message in response.received_messages:
         print(f"Received: {received_message.message.data}.")
         ack_ids.append(received_message.ack_id)
+
+    if len(ack_ids) == 0:
+        print("No messages received. Aborting.")
 
     # Acknowledges the received messages so they will not be sent again.
     subscriber.acknowledge(subscription=subscription_path, ack_ids=ack_ids)
